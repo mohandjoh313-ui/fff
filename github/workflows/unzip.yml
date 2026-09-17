@@ -1,4 +1,4 @@
-name: Unzip HTML ZIP
+name: Unzip ZIP
 
 on:
   workflow_dispatch:
@@ -14,30 +14,38 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Find and unzip ZIP
+      - name: Find ZIP file
         run: |
-          ZIP_FILE=$(find . -maxdepth 1 -type f -name "*.zip" | head -n 1)
+          ZIP_FILE=$(find . -maxdepth 1 -type f -iname "*.zip" | head -n 1)
 
           if [ -z "$ZIP_FILE" ]; then
-            echo "No ZIP file found."
+            echo "ERROR: No ZIP file found in repository root."
             exit 1
           fi
 
-          ZIP_NAME=$(basename "$ZIP_FILE")
-          FOLDER_NAME="${ZIP_NAME%.zip}"
+          echo "Found ZIP: $ZIP_FILE"
+          echo "ZIP_FILE=$ZIP_FILE" >> "$GITHUB_ENV"
 
-          echo "ZIP: $ZIP_FILE"
-          echo "Folder: $FOLDER_NAME"
+      - name: Extract ZIP into folder
+        run: |
+          ZIP_NAME=$(basename "$ZIP_FILE")
+          FOLDER_NAME="${ZIP_NAME%.*}"
+
+          echo "Creating folder: $FOLDER_NAME"
 
           mkdir -p "$FOLDER_NAME"
 
           unzip -o "$ZIP_FILE" -d "$FOLDER_NAME"
 
-      - name: Commit extracted files
+          echo "Extraction completed."
+
+      - name: Save changes to GitHub
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
           git add -A
-          git commit -m "Extract ZIP files" || echo "No changes to commit"
+
+          git commit -m "Extract ZIP files" || echo "Nothing new to commit"
+
           git push
